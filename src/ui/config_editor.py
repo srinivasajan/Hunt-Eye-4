@@ -24,17 +24,23 @@ def _is_scalar(value: Any) -> bool:
     return value is None or isinstance(value, (bool, int, float, str))
 
 
-def _flatten(config: Dict[str, Any], prefix: str = "") -> List[Tuple[str, Any]]:
-    items: List[Tuple[str, Any]] = []
-    for key in sorted(config.keys()):
-        value = config[key]
-        dotted = f"{prefix}{key}" if not prefix else f"{prefix}.{key}"
-        if isinstance(value, dict):
-            items.extend(_flatten(value, dotted))
-        else:
-            if _is_scalar(value):
-                items.append((dotted, value))
-    return items
+# Defined operator-facing configuration keys.
+# Dict maps dotted path to a list of allowed string values (if it's an enum), or None if it's numeric/bool.
+OPERATOR_KEYS = {
+    "hal.backend": ["airsim", "real"],
+    "perception.confidence_threshold": None,
+    "perception.model": ["yolov8n.pt", "yolov8s.pt", "yolov8m.pt"],
+    "recording.enabled": None,
+}
+
+def _get_dotted(config: Dict[str, Any], dotted_key: str, default: Any = None) -> Any:
+    parts = dotted_key.split(".")
+    cur = config
+    for part in parts:
+        if not isinstance(cur, dict):
+            return default
+        cur = cur.get(part, default)
+    return cur if cur is not None else default
 
 
 def _set_dotted(config: Dict[str, Any], dotted_key: str, value: Any) -> None:
@@ -55,7 +61,19 @@ class ConfigEditor:
     scroll: int = 0
 
     def list_items(self, config: Dict[str, Any]) -> List[Tuple[str, Any]]:
-        return _flatten(config)
+        # Pre-seed defaults if missing
+        if "perception" not in config:
+            config["perception"] = {}
+        if "confidence_threshold" not in config["perception"]:
+            config["perception"]["confidence_threshold"] = 0.50
+        if "model" not in config["perception"]:
+            config["perception"]["model"] = "yolov8n.pt"
+            
+        items = []
+        for k in OPERATOR_KEYS:
+            val = _get_dotted(config, k)
+            items.append((k, val))
+        return items
 
     def clamp(self, items_count: int) -> None:
         if items_count <= 0:
@@ -77,9 +95,20 @@ class ConfigEditor:
             self.selected_index += 1
         elif key == ord(" "):
             k, v = items[self.selected_index]
+            allowed_vals = OPERATOR_KEYS.get(k)
+            
             if isinstance(v, bool):
                 _set_dotted(config, k, not v)
                 return f"toggled {k}"
+            elif allowed_vals is not None and isinstance(allowed_vals, list):
+                # Cycle through string options
+                try:
+                    idx = allowed_vals.index(v)
+                    next_v = allowed_vals[(idx + 1) % len(allowed_vals)]
+                except ValueError:
+                    next_v = allowed_vals[0]
+                _set_dotted(config, k, next_v)
+                return f"set {k} to {next_v}"
         elif key in (ord("-"), ord("_"), ord("+"), ord("=")):
             k, v = items[self.selected_index]
             delta = 1

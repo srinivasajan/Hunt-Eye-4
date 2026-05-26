@@ -3,12 +3,11 @@ import sys
 import os
 
 a = Analysis(
-    ['main.py'],
+    ['launcher.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('config.yaml', '.'), 
-        ('src/ui/layout.json', 'src/ui'),
         ('yolov8n.pt', '.'), # Bundle offline YOLO model
         ('models/torch_hub_cache', 'models/torch_hub_cache') # Bundle offline MiDaS cache
     ],
@@ -41,7 +40,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True, # Keeps console for critical CUDA/startup errors
+    console=False, # Final MVP is a clean desktop app
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

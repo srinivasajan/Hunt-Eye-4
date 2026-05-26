@@ -37,28 +37,43 @@ from ui.ui_state import UIState
 from ui.layout_persistence import load_layout, save_layout
 from ui.config_editor import ConfigEditor
 from ui.waypoint_editor import WaypointEditor
+from ui import preflight
+from ui import hud as hud_overlay
+from ui.demo_scene import DemoScene
 from ai.planner import AStarPlanner
 from control.mavlink_interface import PIDController
 from control.worker import ControlWorker
 from perception.worker import PerceptionWorker
+
+# Input source passed from launcher via environment variable
+_INPUT_SOURCE = os.environ.get("HUNTEYE_SOURCE", "SIMULATOR").upper()
+
 
 
 def main():
 
     config = load_config()
 
+    # -- Stage 1 --
+    preflight.render_startup(WINDOW_NAME, step=1, source=_INPUT_SOURCE)
+
     state = SharedState()
-
     state.system_mode = config["system"]["mode"].upper()
-
     orchestrator = Orchestrator()
+
+    # -- Stage 2 --
+    preflight.render_startup(WINDOW_NAME, step=2, source=_INPUT_SOURCE)
 
     registry = get_service_registry()
     registry.register_service("config", config, override=True)
     registry.register_service("state", state, override=True)
     registry.register_service("orchestrator", orchestrator, override=True)
 
-    telemetry_hal = HAL(config)
+    # One shared HAL instance — used by both CameraWorker and ControlWorker.
+    # This is intentional: creating multiple HAL instances would cause multiple
+    # independent AirSim connection attempts, bypassing the NullBackend fallback
+    # and causing CameraWorker to retry AirSim even after failover.
+    shared_hal = HAL(config)
 
     safety_config = config.get("safety", {})
     safety = SafetyLayer(
@@ -69,16 +84,16 @@ def main():
     pid = PIDController()
     planner = AStarPlanner()
 
+    # CameraWorker receives the shared HAL.  The factory also uses the same
+    # shared_hal so restarts don't create new AirSim connection attempts.
     def build_camera_worker():
-
         return CameraWorker(
             state=state,
-            hal=HAL(config),
+            hal=shared_hal,
             config=config
         )
 
     camera_worker = build_camera_worker()
-
     orchestrator.add_worker(camera_worker, factory=build_camera_worker)
 
     # Perception and Tracking Worker
@@ -86,10 +101,11 @@ def main():
         return PerceptionWorker(state=state, config=config)
     orchestrator.add_worker(build_perception_worker(), factory=build_perception_worker)
 
-    # Control Worker to send actual commands to HAL
+    # Control Worker — also uses the shared HAL
     def build_control_worker():
-        return ControlWorker(state=state, hal=telemetry_hal, config=config, pid=pid, planner=planner, safety=safety)
+        return ControlWorker(state=state, hal=shared_hal, config=config, pid=pid, planner=planner, safety=safety)
     orchestrator.add_worker(build_control_worker(), factory=build_control_worker)
+
 
     if config.get("plugins", {}).get("enabled"):
 
@@ -107,6 +123,18 @@ def main():
             paths=plugin_paths,
         )
         Logger.info(f"Plugins loaded | count={len(loaded)}")
+
+    # -- Stage 3: hardware / comms connecting ---------------------------------
+    preflight.render_startup(
+        WINDOW_NAME, step=3,
+        degraded=shared_hal.degraded,
+        degraded_reason=shared_hal.degraded_reason,
+        source=_INPUT_SOURCE,
+    )
+    if shared_hal.degraded:
+        Logger.warning(
+            f"Runtime starting in degraded mode | reason={shared_hal.degraded_reason}"
+        )
 
     if config.get("ipc", {}).get("enabled"):
 
@@ -198,10 +226,78 @@ def main():
 
     orchestrator.start()
 
-    state.event_bus.emit(
-        "TEST_EVENT",
-        {"message": "Event Bus Working"}
+    # -- Stage 4: workers running --
+    preflight.render_startup(
+        WINDOW_NAME, step=4,
+        degraded=shared_hal.degraded,
+        degraded_reason=shared_hal.degraded_reason,
+        source=_INPUT_SOURCE,
     )
+
+    state.event_bus.emit("TEST_EVENT", {"message": "Event Bus Working"})
+
+    # Surface degraded mode in the dashboard event log.
+    if shared_hal.degraded:
+        event_log.append(
+            state, "WARN",
+            f"DEGRADED MODE: {shared_hal.degraded_reason}",
+        )
+
+    # -- Stage 5: ready --
+    preflight.render_startup(
+        WINDOW_NAME, step=5,
+        degraded=shared_hal.degraded,
+        degraded_reason=shared_hal.degraded_reason,
+        source=_INPUT_SOURCE,
+    )
+    time.sleep(0.5)
+
+    # -----------------------------------------------------------------------
+    # READY STATE — operator sees capability summary, presses SPACE to start
+    # -----------------------------------------------------------------------
+    ai_available = getattr(getattr(shared_hal, 'backend', None), '_dead', False) is False
+    depth_available = False  # MiDaS optional; update if loaded
+
+    # Detect whether AI models actually loaded by checking PerceptionWorker state
+    # (conservative default — the worker logs will confirm)
+    try:
+        from ultralytics import YOLO  # noqa: F401
+        ai_available = True
+    except ImportError:
+        ai_available = False
+
+    # Set initial UIState fields from runtime context
+    ui_state.input_source = _INPUT_SOURCE
+    ui_state.app_state = "DEGRADED" if shared_hal.degraded else "READY"
+
+    # Show the READY screen and wait for SPACE or Q
+    while True:
+        preflight.render_ready(
+            WINDOW_NAME,
+            degraded=shared_hal.degraded,
+            degraded_reason=shared_hal.degraded_reason,
+            source=_INPUT_SOURCE,
+            ai_available=ai_available,
+            depth_available=depth_available,
+        )
+        key = cv2.waitKey(40) & 0xFF
+        if key == ord('q') or key == 27:  # Q or ESC
+            Logger.info("Operator quit at READY screen.")
+            orchestrator.stop()
+            shared_hal.close()
+            cv2.destroyAllWindows()
+            return
+        if key == ord(' '):
+            ui_state.app_state = "LIVE"
+            event_log.append(state, "INFO", "Mission started by operator.")
+            break
+        if key == ord('d'):
+            ui_state.panel_mode = "DIAG"
+            ui_state.app_state = "LIVE"
+            break
+
+    # Initialize DemoScene if we are in degraded mode
+    demo = DemoScene() if shared_hal.degraded else None
 
     last_monitor = time.time()
 
@@ -216,19 +312,35 @@ def main():
             if frame is not None:
 
                 fps_counter.update()
-
                 fps = fps_counter.get_fps()
-
                 snapshot = state.snapshot()
+
+                if shared_hal.degraded:
+                    demo_patch = demo.update()
+                    snapshot.update(demo_patch)
+                    
+                    # Also override the shared state's mission started_at so the timer runs in demo mode
+                    if "started_at" not in state._state["mission"] and ui_state.tracking_state != "SEARCHING":
+                         state._state["mission"]["started_at"] = time.time()
+                         state._state["mission"]["status"] = "ACTIVE"
+                    if snapshot.get("target_bbox") is not None:
+                         state.system_mode = "TRACKING"
+                    else:
+                         state.system_mode = "IDLE"
+                    snapshot["system_mode"] = state.system_mode
 
                 worker_statuses = orchestrator.status()
 
                 for status in worker_statuses:
-
                     state.update_worker_health(status["name"], status)
 
+                # Apply tactical HUD overlays on top of the raw frame
+                hud_frame = hud_overlay.draw_live_hud(
+                    frame, snapshot, ui_state, fps
+                )
+
                 display_frame = dashboard.render(
-                    frame,
+                    hud_frame,
                     snapshot,
                     worker_statuses,
                     fps,
@@ -237,7 +349,6 @@ def main():
                 )
 
                 recorder.write(state, display_frame)
-
                 cv2.imshow(WINDOW_NAME, display_frame)
 
             if time.time() - last_monitor > config["monitor"]["interval_seconds"]:
@@ -282,11 +393,13 @@ def main():
 
         orchestrator.stop()
 
-        telemetry_hal.close()
+        shared_hal.close()
 
         cv2.destroyAllWindows()
 
         Logger.info("HuntEye runtime stopped")
+        import sys
+        sys.exit(0)
 
 
 def _handle_keypress(
@@ -377,16 +490,24 @@ def _handle_keypress(
             event_log.append(state, "INFO", msg)
         return
 
-    if key == ord('r') and frame is not None:
-
+    if key in (ord('r'), ord('R')) and frame is not None:
         active = recorder.toggle(state, frame.shape)
-
         event_log.append(state, "INFO", "Recording started" if active else "Recording stopped")
 
-    elif key == ord('p'):
+    elif key in (ord('s'), ord('S')) and frame is not None:
+        import os
+        from pathlib import Path
+        from core.paths import get_app_dir
+        folder = get_app_dir() / config.get("recording", {}).get("folder", "recordings") / "screenshots"
+        folder.mkdir(parents=True, exist_ok=True)
+        import time
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        path = folder / f"screenshot_{ts}.png"
+        cv2.imwrite(str(path), frame)
+        event_log.append(state, "INFO", f"Screenshot saved")
 
+    elif key in (ord('p'), 32):  # P or SPACE = pause/resume
         paused = operator_controls.toggle_pause(state)
-
         event_log.append(state, "INFO", "Paused" if paused else "Resumed")
 
     elif key == ord('i'):

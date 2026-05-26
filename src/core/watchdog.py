@@ -4,6 +4,12 @@ from core.restart_limiter import RestartLimiter
 from core.worker_base import WorkerBase
 from core.orchestrator import Orchestrator
 from core.event_bus import EventBus
+import time
+
+# How many seconds to wait before re-emitting the same unhealthy event
+# for the same worker.  Prevents flooding the event log when a worker
+# stays dead for an extended period.
+_UNHEALTHY_NOTIFY_INTERVAL_S = 30.0
 
 
 class Watchdog(WorkerBase):
@@ -34,11 +40,16 @@ class Watchdog(WorkerBase):
             cooldown_seconds=restart_cooldown_seconds,
         )
 
+        # Track when we last emitted an unhealthy notification per worker name
+        self._last_notified: Dict[str, float] = {}
+
     def safe_run(self) -> None:
 
         while self.running:
 
             self.heartbeat()
+
+            now = time.time()
 
             for status in self.orchestrator.status():
 
@@ -51,8 +62,14 @@ class Watchdog(WorkerBase):
                 unhealthy_reason = self._get_unhealthy_reason(status)
 
                 if unhealthy_reason is None:
-
                     continue
+
+                # Throttle: only report the same worker again after the interval
+                last_t = self._last_notified.get(name, 0.0)
+                if now - last_t < _UNHEALTHY_NOTIFY_INTERVAL_S:
+                    continue
+
+                self._last_notified[name] = now
 
                 Logger.warning(
                     f"Worker unhealthy | name={name} | reason={unhealthy_reason}"
@@ -106,4 +123,5 @@ class Watchdog(WorkerBase):
             return "stale"
 
         return None
+
 

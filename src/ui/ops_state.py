@@ -128,8 +128,8 @@ class SessionRecorder:
 
             return False
 
-        folder = Path(self.config["recording"]["folder"])
-
+        from core.paths import get_app_dir
+        folder = get_app_dir() / self.config["recording"]["folder"]
         folder.mkdir(parents=True, exist_ok=True)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -203,8 +203,9 @@ class SessionExporter:
         self.folder = Path(config["session"]["export_folder"])
 
     def export_snapshot(self, snapshot):
-
-        self.folder.mkdir(parents=True, exist_ok=True)
+        from core.paths import get_app_dir
+        folder = get_app_dir() / self.folder
+        folder.mkdir(parents=True, exist_ok=True)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
 

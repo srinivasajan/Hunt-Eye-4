@@ -58,13 +58,15 @@ class OperationsDashboard:
         if ui_state is not None:
             self._apply_debug_overlays(frame_view, snapshot, ui_state)
 
-        if self.show_target_overlay:
-
-            self._draw_target_overlay(frame_view, snapshot)
-
+        app_state = getattr(ui_state, "app_state", "LIVE")
         mode = getattr(ui_state, "panel_mode", "OPS") if ui_state is not None else "OPS"
 
-        if mode == "DIAG":
+        # App-state routing takes priority over panel_mode
+        if app_state == "READY":
+            panel = self._build_ready_panel(frame_view.shape[0], snapshot, ui_state)
+        elif app_state == "DEGRADED" and mode == "OPS":
+            panel = self._build_degraded_panel(frame_view.shape[0], snapshot, ui_state)
+        elif mode == "DIAG":
             panel = self._build_diagnostics_panel(frame_view.shape[0], snapshot, worker_statuses, ui_state)
         elif mode == "CONFIG":
             panel = self._build_config_panel(frame_view.shape[0], config_for_editor or {}, ui_state)
@@ -274,121 +276,238 @@ class OperationsDashboard:
         self._text(panel, "o ops | d diag | g config | y waypoints | m theme | v layout", (18, height - 18), scale=0.38, color=colors["muted"])
         return panel
 
-    def _draw_target_overlay(self, frame, snapshot):
-
-        target_bbox = snapshot.get("target_bbox")
-
-        if target_bbox is not None:
-
-            self._draw_bbox(frame, target_bbox, (0, 220, 255), "TARGET")
-
-        for index, detection in enumerate(snapshot.get("detections", []), start=1):
-
-            bbox = detection.get("bbox")
-
-            confidence = detection.get("confidence")
-
-            label = f"DET {index}"
-
-            if confidence is not None:
-
-                label = f"{label} {confidence:.2f}"
-
-            self._draw_bbox(frame, bbox, (70, 180, 255), label)
-
-        for track in snapshot.get("tracks", []):
-
-            bbox = track.get("bbox") or track.get("tlwh")
-
-            track_id = track.get("track_id", "?")
-
-            self._draw_bbox(frame, bbox, (80, 220, 120), f"ID {track_id}")
-
     def _build_panel(self, height, snapshot, worker_statuses, fps, ui_state):
-
+        """LIVE operations panel with operator-friendly language."""
         colors = self._get_colors(ui_state)
         panel = np.zeros((height, self.panel_width, 3), dtype=np.uint8)
-
         panel[:] = colors["bg"]
 
         y = 30
 
-        self._text(panel, "HuntEye Ops", (18, y), scale=0.72, color=colors["title"], thickness=2)
-
-        y += 34
-
+        # ── Header ──────────────────────────────────────────────────────────
         system_mode = snapshot.get("system_mode", "UNKNOWN")
+        degraded = any(
+            "DEGRADED" in str(ev.get("message", ""))
+            for ev in snapshot.get("events", [])[-20:]
+        )
 
+        # Human-readable mode label
+        mode_labels = {
+            "SIM":        "Simulator Mode",
+            "REAL":       "Live Camera",
+            "DEMO":       "Demo Mode",
+            "TRACKING":   "\u25cf Tracking Target",
+            "IDLE":       "Standby",
+            "EMERGENCY":  "\u26a0 Emergency Stop",
+        }
+        mode_text  = mode_labels.get(system_mode, system_mode)
         color_mode = colors["highlight"]
-
         if system_mode == "TRACKING":
-
             color_mode = colors["warn"]
-
         elif system_mode == "EMERGENCY":
-
             color_mode = colors["error"]
 
-        self._text(panel, f"MODE: {system_mode}", (18, y), scale=0.5, color=color_mode)
+        source = getattr(ui_state, "input_source", "")
+        source_label = {"SIMULATOR": "SIM", "WEBCAM": "LIVE", "DEMO": "DEMO"}.get(source, source)
 
+        self._text(panel, "HUNTEYE", (18, y), scale=0.62, color=colors["title"], thickness=2)
+        self._text(panel, source_label, (self.panel_width - 52, y), scale=0.48, color=color_mode)
         y += 24
+        self._text(panel, mode_text, (18, y), scale=0.44, color=color_mode)
+        y += 20
 
+        # ── Ordered sections ────────────────────────────────────────────────
         panel_order = getattr(ui_state, "panel_order", ["latency", "workers", "mission", "events"])
 
         for section_name in panel_order:
-            if section_name == "latency" and self.show_latency:
-                latency = snapshot.get("latency", {})
-                y += 8
-                self._section(panel, "Latency (avg ms)", y, color=colors["muted"])
-                y += 26
-                for name, stats in list(latency.items())[:6]:
-                    avg = stats.get("avg", 0)
-                    self._text(panel, f"{name}: {avg:.1f}ms", (18, y), scale=0.42, color=colors["text"])
-                    y += 20
 
-            elif section_name == "workers" and self.show_worker_health:
-                y += 8
-                self._section(panel, "Workers", y, color=colors["muted"])
+            if section_name == "workers" and self.show_worker_health:
+                y += 10
+                self._section(panel, "System Health", y, color=colors["muted"])
                 y += 26
                 for status in worker_statuses[:6]:
-                    c = colors["text"] if status.get("status") == "ok" else colors["error"]
-                    self._text(panel, f"{status['name']}: {status.get('status', 'unknown')}", (18, y), scale=0.42, color=c)
+                    alive  = status.get("alive", False)
+                    failed = status.get("failed", False)
+                    ok     = alive and not failed
+                    dot    = "\u25cf" if ok else "\u25cb"
+                    dot_c  = (70, 210, 120) if ok else colors["error"]
+                    age    = status.get("last_update_age", 0)
+                    # Shorten engineering names for the operator
+                    name = status["name"].replace("Worker", "").strip()
+                    self._text(panel, f" {dot} {name}", (18, y), scale=0.42, color=dot_c)
+                    if not ok:
+                        self._text(panel, "offline", (self.panel_width - 68, y),
+                                   scale=0.38, color=colors["error"])
                     y += 20
 
+            elif section_name == "latency" and self.show_latency:
+                latency = snapshot.get("latency", {})
+                if latency:
+                    y += 10
+                    self._section(panel, "Performance", y, color=colors["muted"])
+                    y += 26
+                    for name, stats in list(latency.items())[:5]:
+                        avg = stats.get("avg", 0)
+                        bar_label = name.replace("_", " ").replace("get frame", "frame").strip()
+                        self._text(panel, f"{bar_label}: {avg:.0f} ms",
+                                   (18, y), scale=0.40, color=colors["text"])
+                        y += 18
+
             elif section_name == "mission" and self.show_mission:
-                y += 8
+                y += 10
                 self._section(panel, "Mission", y, color=colors["muted"])
                 y += 26
                 mission = snapshot.get("mission", {})
-                wps = mission.get("waypoints", [])
-                self._text(panel, f"Status: {mission.get('status', 'IDLE')}", (18, y), scale=0.42, color=colors["text"])
+                wps     = mission.get("waypoints", [])
+                status  = mission.get("status", "IDLE")
+                status_labels = {
+                    "IDLE":    "No mission",
+                    "PLANNED": "Planned",
+                    "ACTIVE":  "In progress",
+                    "DONE":    "Complete",
+                }
+                self._text(panel, status_labels.get(status, status),
+                           (18, y), scale=0.42, color=colors["text"])
                 y += 20
-                self._text(panel, f"Waypoints: {len(wps)}", (18, y), scale=0.42, color=colors["text"])
-                y += 20
+                if wps:
+                    self._text(panel, f"{len(wps)} waypoint{'s' if len(wps) != 1 else ''}",
+                               (18, y), scale=0.40, color=colors["muted"])
+                    y += 18
 
             elif section_name == "events" and self.show_event_log:
-                y += 8
-                self._section(panel, "Event Log", y, color=colors["muted"])
+                y += 10
+                self._section(panel, "Activity", y, color=colors["muted"])
                 y += 26
-                for ev in snapshot.get("events", [])[-self.max_events:]:
+                # Filter internal noise — only show operator-relevant events
+                visible = [
+                    ev for ev in snapshot.get("events", [])
+                    if ev.get("level") != "INFO"
+                    or not any(skip in ev.get("message", "")
+                               for skip in ("Event bus", "Panel:", "Layout"))
+                ]
+                for ev in visible[-self.max_events:]:
                     lvl = ev.get("level", "INFO")
-                    c = colors["text"]
+                    c   = colors["text"]
                     if lvl == "ERROR":
                         c = colors["error"]
                     elif lvl == "WARN":
                         c = colors["warn"]
-                    msg = ev.get("message", "")[:40]
-                    self._text(panel, f"{lvl}: {msg}", (18, y), scale=0.38, color=c)
-                    y += 20
+                    msg = ev.get("message", "")[:38]
+                    self._text(panel, msg, (18, y), scale=0.38, color=c)
+                    y += 18
+                    if y > height - 50:
+                        break
 
+        # ── Footer / FPS ─────────────────────────────────────────────────────
         y = height - 40
-
-        self._text(panel, f"FPS: {fps:.1f}", (18, y), scale=0.45, color=colors["title"])
+        self._text(panel, f"{fps:.0f} fps", (18, y), scale=0.42, color=colors["muted"])
 
         if self.show_controls:
+            self._text(panel,
+                       "[T] Track  [P] Pause  [R] Record  [D] Diag  [Q] Quit",
+                       (18, height - 18), scale=0.36, color=colors["muted"])
 
-            self._text(panel, "o ops | d diag | g config | y waypoints | m theme | v layout", (18, height - 18), scale=0.38, color=colors["muted"])
+        return panel
 
+    def _build_ready_panel(self, height, snapshot, ui_state):
+        """READY state panel — shown before operator starts mission."""
+        colors = self._get_colors(ui_state)
+        panel  = np.zeros((height, self.panel_width, 3), dtype=np.uint8)
+        panel[:] = colors["bg"]
+
+        y = 30
+        self._text(panel, "SYSTEM READY", (18, y),
+                   scale=0.65, color=(80, 185, 63), thickness=2)
+        y += 32
+
+        source = getattr(ui_state, "input_source", "SIMULATOR")
+        src_label = {"SIMULATOR": "Simulator connected",
+                     "WEBCAM":    "Camera connected",
+                     "DEMO":      "Demo mode active"}.get(source, source)
+        self._text(panel, src_label, (18, y), scale=0.42, color=colors["muted"])
+        y += 36
+
+        self._section(panel, "Capabilities", y, color=colors["muted"])
+        y += 26
+        caps = [
+            ("Live feed",         source != "DEMO"),
+            ("Object detection",  True),
+            ("Waypoint planning", True),
+            ("Session recording", True),
+            ("Drone control",     source != "DEMO"),
+        ]
+        for label, avail in caps:
+            dot = "\u25cf" if avail else "\u25cb"
+            c   = (70, 210, 120) if avail else colors["muted"]
+            self._text(panel, f" {dot}  {label}", (18, y), scale=0.42, color=c)
+            y += 20
+
+        y += 20
+        self._section(panel, "Start Mission", y, color=colors["muted"])
+        y += 30
+        self._text(panel, "Press  SPACE", (18, y), scale=0.56, color=colors["title"], thickness=1)
+        y += 26
+        self._text(panel, "to begin tracking", (18, y), scale=0.42, color=colors["muted"])
+        y += 30
+        self._text(panel, "Press  Q  to quit", (18, y), scale=0.40, color=colors["muted"])
+
+        self._text(panel, "[SPACE] Start  [D] Diagnostics  [Q] Quit",
+                   (18, height - 18), scale=0.36, color=colors["muted"])
+        return panel
+
+    def _build_degraded_panel(self, height, snapshot, ui_state):
+        """DEGRADED state panel — explains demo mode in plain English."""
+        colors = self._get_colors(ui_state)
+        panel  = np.zeros((height, self.panel_width, 3), dtype=np.uint8)
+        panel[:] = colors["bg"]
+
+        y = 30
+        self._text(panel, "DEMO MODE", (18, y),
+                   scale=0.65, color=(34, 153, 210), thickness=2)  # amber
+        y += 30
+        self._text(panel, "No live input connected.", (18, y),
+                   scale=0.42, color=colors["muted"])
+        y += 36
+
+        self._section(panel, "What still works", y, color=colors["muted"])
+        y += 26
+        working = [
+            "Object detection engine",
+            "Waypoint planning",
+            "Session recording",
+            "Dashboard controls",
+        ]
+        for item in working:
+            self._text(panel, f" \u25cf  {item}", (18, y),
+                       scale=0.42, color=(70, 210, 120))
+            y += 20
+
+        y += 12
+        self._section(panel, "Not available", y, color=colors["muted"])
+        y += 26
+        unavailable = [
+            "Live camera feed",
+            "Drone flight control",
+        ]
+        for item in unavailable:
+            self._text(panel, f" \u25cb  {item}", (18, y),
+                       scale=0.42, color=colors["error"])
+            y += 20
+
+        y += 20
+        self._section(panel, "How to connect", y, color=colors["muted"])
+        y += 26
+        self._text(panel, "1. Start AirSim or plug in webcam",
+                   (18, y), scale=0.40, color=colors["text"])
+        y += 18
+        self._text(panel, "2. Restart HuntEye from the launcher",
+                   (18, y), scale=0.40, color=colors["text"])
+        y += 18
+        self._text(panel, "3. Select your source and click Launch",
+                   (18, y), scale=0.40, color=colors["text"])
+
+        self._text(panel, "[SPACE] Continue  [D] Diagnostics  [Q] Quit",
+                   (18, height - 18), scale=0.36, color=colors["muted"])
         return panel
 
     def _scale_frame(self, frame):
@@ -649,11 +768,13 @@ class OperationsDashboard:
 
         return x1, y1, x2, y2
 
-    def _section(self, panel, title, y):
+    def _section(self, panel, title, y, color=(240, 240, 240)):
 
-        cv2.line(panel, (18, y - 12), (self.panel_width - 18, y - 12), (55, 65, 75), 1)
+        # Separator line: use a dimmed version of the text color
+        line_color = tuple(max(0, int(c * 0.4)) for c in color)
+        cv2.line(panel, (18, y - 12), (self.panel_width - 18, y - 12), line_color, 1)
 
-        self._text(panel, title, (18, y), scale=0.52, color=(240, 240, 240), thickness=1)
+        self._text(panel, title, (18, y), scale=0.52, color=color, thickness=1)
 
     def _metric(self, panel, label, value, y, color):
 

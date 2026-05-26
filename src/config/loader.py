@@ -103,16 +103,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 
 import sys
+from core.paths import get_app_dir
 
 def load_config(path: str | Path = "config.yaml") -> dict[str, Any]:
     config = deepcopy(DEFAULT_CONFIG)
     
-    # Handle PyInstaller _MEIPASS pathing
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        base_path = Path(sys._MEIPASS)
-        config_path = base_path / path
-    else:
-        config_path = Path(path)
+    config_path = get_app_dir() / path
 
     if config_path.exists():
         loaded = _parse_simple_yaml(config_path.read_text(encoding="utf-8"))

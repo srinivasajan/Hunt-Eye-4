@@ -9,6 +9,10 @@ def sanitize_value(v):
         return 0.0
     return v
 
+# Throttle interval for repeated per-loop error messages (seconds)
+_ERR_THROTTLE_S = 30.0
+
+
 class ControlWorker(WorkerBase):
     def __init__(self, state, hal, config, pid, planner, safety):
         super().__init__(name="control", loop_interval=0.05)
@@ -24,6 +28,10 @@ class ControlWorker(WorkerBase):
         self.vz_filtered = 0.0
         self.yaw_filtered = 0.0
 
+        # Throttle timestamps to prevent log spam on sustained failures
+        self._last_telemetry_err_t: float = 0.0
+        self._last_velocity_err_t: float = 0.0
+
     def safe_run(self):
         while self.running:
             self.heartbeat()
@@ -38,7 +46,10 @@ class ControlWorker(WorkerBase):
                     if len(self.state.telemetry_history) > 1000:
                         self.state.telemetry_history.pop(0)
             except Exception as e:
-                Logger.warning(f"Telemetry update failed | error={e}")
+                now = time.time()
+                if now - self._last_telemetry_err_t >= _ERR_THROTTLE_S:
+                    Logger.warning(f"Telemetry update failed | error={e}")
+                    self._last_telemetry_err_t = now
                 telemetry = {}
 
             # 2. Extract perception and telemetry state
@@ -131,6 +142,9 @@ class ControlWorker(WorkerBase):
                 try:
                     self.hal.send_velocity(safe_vx, safe_vy, safe_vz, yaw_rate=self.yaw_filtered)
                 except Exception as e:
-                    Logger.error(f"HAL send_velocity failed: {e}")
+                    now = time.time()
+                    if now - self._last_velocity_err_t >= _ERR_THROTTLE_S:
+                        Logger.error(f"HAL send_velocity failed: {e}")
+                        self._last_velocity_err_t = now
 
             self.sleep()

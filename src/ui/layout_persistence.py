@@ -12,7 +12,9 @@ from typing import Any, Dict
 from core.logger import Logger
 
 
-DEFAULT_LAYOUT_PATH = Path("sessions") / "ui_layout.json"
+from core.paths import get_app_dir
+
+DEFAULT_LAYOUT_PATH = get_app_dir() / "sessions" / "ui_layout.json"
 
 
 def load_layout(path: Path | str = DEFAULT_LAYOUT_PATH) -> Dict[str, Any]:
