@@ -1,0 +1,85 @@
+system:
+  mode: sim
+  debug: true
+
+camera:
+  name: "0"
+  sleep_seconds: 0.01
+  width: 1280
+  height: 720
+  target_fps: 30
+
+window:
+  name: "HuntEye"
+
+dashboard:
+  enabled: true
+  panel_width: 430
+  show_latency: true
+  show_worker_health: true
+  show_target_overlay: true
+  show_event_log: true
+  show_mission: true
+  show_controls: true
+  max_events: 6
+  min_height: 720
+
+recording:
+  enabled: true
+  folder: "recordings"
+  fps: 20
+  codec: "mp4v"
+
+session:
+  export_folder: "sessions"
+
+airsim:
+  ip: "127.0.0.1"
+
+monitor:
+  interval_seconds: 2.0
+  stale_after_seconds: 2.0
+
+watchdog:
+  enabled: true
+  interval_seconds: 1.0
+  auto_restart: false
+  max_restarts_per_minute: 5
+  restart_cooldown_seconds: 10.0
+
+ipc:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8765
+  token: null
+
+telemetry_stream:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8787
+  interval_seconds: 0.5
+  token: null
+
+plugins:
+  enabled: false
+  path: "plugins"
+
+logging:
+  level: "INFO"
+  folder: "core/logs"
+
+hal:
+  backend: airsim
+
+real:
+  serial_port: "/dev/ttyUSB0"
+  baud_rate: 57600
+  mavlink_connection: "udp:127.0.0.1:14550"
+  mavlink_timeout_seconds: 5.0
+  require_mavlink: false
+  camera_index: 0
+  camera_api: "auto"
+  camera_width: 1280
+  camera_height: 720
+  camera_fps: 30
+  require_camera: true

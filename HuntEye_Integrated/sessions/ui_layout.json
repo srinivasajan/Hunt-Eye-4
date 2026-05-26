@@ -1,0 +1,18 @@
+{
+  "ui_state": {
+    "config_scroll": 0,
+    "config_selected_index": 0,
+    "panel_mode": "OPS",
+    "panel_order": [
+      "latency",
+      "workers",
+      "mission",
+      "events"
+    ],
+    "show_cost_overlay": false,
+    "show_depth_overlay": false,
+    "show_path_overlay": true,
+    "theme": "DARK",
+    "waypoint_selected_index": 0
+  }
+}

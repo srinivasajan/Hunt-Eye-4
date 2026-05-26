@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Runtime output
+core/logs/
+recordings/
+sessions/
+
+# Build outputs
+dist/
+build/
+*.spec

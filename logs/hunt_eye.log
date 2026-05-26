@@ -1,0 +1,92 @@
+[INFO] 2026-05-25 14:35:11,882 | Service registered | name=config | type=dict
+[INFO] 2026-05-25 14:35:11,882 | Service registered | name=state | type=SharedState
+[INFO] 2026-05-25 14:35:11,882 | Service registered | name=orchestrator | type=Orchestrator
+[INFO] 2026-05-25 14:35:11,883 | HuntEye Orchestrator starting...
+[INFO] 2026-05-25 14:35:11,883 | Starting worker | name=AutonomyWorker
+[INFO] 2026-05-25 14:35:11,884 | Worker started | name=AutonomyWorker
+[INFO] 2026-05-25 14:35:11,884 | Starting worker | name=CameraWorker
+[INFO] 2026-05-25 14:35:11,885 | Worker started | name=CameraWorker
+[INFO] 2026-05-25 14:35:11,885 | Starting worker | name=Watchdog
+[INFO] 2026-05-25 14:35:11,886 | Worker started | name=Watchdog
+[WARNING] 2026-05-25 14:35:13,896 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:14,663 | Connect error on fd 3608: WSAECONNREFUSED
+[WARNING] 2026-05-25 14:35:14,899 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:15,912 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:16,708 | Connect error on fd 3608: WSAECONNREFUSED
+[WARNING] 2026-05-25 14:35:16,926 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:17,941 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:18,732 | Connect error on fd 3608: WSAECONNREFUSED
+[WARNING] 2026-05-25 14:35:18,950 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:19,960 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:20,784 | Connect error on fd 3608: WSAECONNREFUSED
+[WARNING] 2026-05-25 14:35:20,971 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:21,975 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:35:22,817 | Connect error on fd 3608: WSAECONNREFUSED
+[ERROR] 2026-05-25 14:35:22,821 | Worker crashed | name=CameraWorker | error=Retry connection over the limit
+[INFO] 2026-05-25 14:35:22,822 | Worker stopped | name=CameraWorker
+[WARNING] 2026-05-25 14:35:22,987 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:23,996 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:25,006 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:26,017 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:27,031 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:28,037 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:29,048 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:30,055 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:31,066 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:32,081 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:33,096 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:34,109 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:35,125 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:36,141 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:37,153 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:38,164 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:39,177 | Worker unhealthy | name=CameraWorker | reason=failed
+[WARNING] 2026-05-25 14:35:40,189 | Worker unhealthy | name=CameraWorker | reason=failed
+[INFO] 2026-05-25 14:35:40,981 | Stopping worker | name=AutonomyWorker
+[INFO] 2026-05-25 14:35:40,981 | Stopping worker | name=CameraWorker
+[INFO] 2026-05-25 14:35:40,981 | Stopping worker | name=Watchdog
+[INFO] 2026-05-25 14:35:40,981 | Worker stopped | name=AutonomyWorker
+[INFO] 2026-05-25 14:35:40,981 | Worker stopped | name=Watchdog
+[INFO] 2026-05-25 14:35:40,983 | HuntEye runtime stopped
+[INFO] 2026-05-25 14:36:46,849 | Service registered | name=config | type=dict
+[INFO] 2026-05-25 14:36:46,849 | Service registered | name=state | type=SharedState
+[INFO] 2026-05-25 14:36:46,849 | Service registered | name=orchestrator | type=Orchestrator
+[INFO] 2026-05-25 14:36:46,849 | HuntEye Orchestrator starting...
+[INFO] 2026-05-25 14:36:46,849 | Starting worker | name=AutonomyWorker
+[INFO] 2026-05-25 14:36:46,851 | Worker started | name=AutonomyWorker
+[INFO] 2026-05-25 14:36:46,851 | Starting worker | name=CameraWorker
+[INFO] 2026-05-25 14:36:46,852 | Worker started | name=CameraWorker
+[INFO] 2026-05-25 14:36:46,852 | Starting worker | name=Watchdog
+[INFO] 2026-05-25 14:36:46,852 | Worker started | name=Watchdog
+[WARNING] 2026-05-25 14:36:48,881 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:49,889 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:50,890 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:51,906 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:52,922 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:53,934 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:54,936 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:55,951 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:56,966 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:57,978 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:36:58,992 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:00,005 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:01,018 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:02,020 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:03,022 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:04,037 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:05,051 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:06,066 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:07,079 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:08,092 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:09,097 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:10,097 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:11,111 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:12,126 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:13,128 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:14,132 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:15,137 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:16,142 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:17,145 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:18,147 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:19,163 | Worker unhealthy | name=CameraWorker | reason=stale
+[WARNING] 2026-05-25 14:37:20,166 | Worker unhealthy | name=CameraWorker | reason=stale

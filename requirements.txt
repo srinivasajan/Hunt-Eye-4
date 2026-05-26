@@ -1,0 +1,12 @@
+# Minimal runtime dependencies for HuntEye
+# Keep this small; pin versions only when required.
+
+numpy
+opencv-python
+airsim
+
+# Dev 3 autonomy and Qt dashboard modules
+gymnasium
+stable-baselines3
+PyQt6
+psutil

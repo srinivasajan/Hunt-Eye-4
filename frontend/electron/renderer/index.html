@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HuntEye</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div>
+          <div class="brand">HuntEye</div>
+          <div class="tagline">Operator-first drone vision</div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-page="home">Start</button>
+          <button class="nav-item" data-page="learn">What This Means</button>
+          <button class="nav-item" data-page="system">System Check</button>
+        </nav>
+
+        <div class="safety-card">
+          <div class="safety-title">Safety First</div>
+          <p>Real drone control should only be enabled after camera, simulator, and emergency stop are verified.</p>
+        </div>
+      </aside>
+
+      <section class="content">
+        <section id="home" class="page active">
+          <div class="hero">
+            <div>
+              <h1>Choose how you want to use HuntEye.</h1>
+              <p>
+                Start with Practice if you are new. It works immediately and teaches the screen without needing a drone.
+              </p>
+            </div>
+            <div class="status-pill" id="runtimeStatus">Ready</div>
+          </div>
+
+          <div class="mode-grid">
+            <button class="mode-card recommended" data-mode="practice">
+              <span class="eyebrow">Recommended first</span>
+              <strong>Practice Mode</strong>
+              <span>Learn the screen with a safe fake feed. No setup needed.</span>
+            </button>
+            <button class="mode-card" data-mode="webcam">
+              <span class="eyebrow">Local testing</span>
+              <strong>Webcam Mode</strong>
+              <span>Use your laptop or USB camera. Good for basic camera checks.</span>
+            </button>
+            <button class="mode-card" data-mode="airsim">
+              <span class="eyebrow">Simulator</span>
+              <strong>AirSim Mode</strong>
+              <span>Use Microsoft AirSim. Open AirSim before starting.</span>
+            </button>
+            <button class="mode-card locked" data-mode="real" disabled>
+              <span class="eyebrow">Locked</span>
+              <strong>Real Drone Mode</strong>
+              <span>Will stay locked until the safety checklist is complete.</span>
+            </button>
+          </div>
+
+          <div class="operator-panel">
+            <div class="screen">
+              <canvas id="practiceCanvas" width="960" height="540"></canvas>
+              <div class="empty-screen" id="emptyScreen">
+                Select Practice Mode to see the operator screen here.
+              </div>
+            </div>
+
+            <div class="controls">
+              <div>
+                <div class="label">Selected Mode</div>
+                <div class="selected-mode" id="selectedMode">Practice Mode</div>
+              </div>
+              <button class="primary-action" id="startButton">Start Selected Mode</button>
+              <button class="secondary-action" id="stopButton">Stop</button>
+              <button class="danger-action" id="emergencyButton">Emergency Stop</button>
+              <div class="plain-log" id="plainLog">Nothing is running yet.</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="learn" class="page">
+          <h2>What HuntEye Is</h2>
+          <div class="learn-grid">
+            <article>
+              <h3>Camera</h3>
+              <p>The app needs a video source. That can be a fake practice feed, your webcam, or a simulator camera.</p>
+            </article>
+            <article>
+              <h3>Target</h3>
+              <p>The green box shows what HuntEye is watching. In practice mode, it is simulated so you can learn safely.</p>
+            </article>
+            <article>
+              <h3>Safety</h3>
+              <p>Safety rules limit speed, altitude, and emergency states before movement commands are accepted.</p>
+            </article>
+            <article>
+              <h3>AirSim</h3>
+              <p>AirSim is a drone simulator. If it is closed, simulator mode cannot connect. Practice mode still works.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="system" class="page">
+          <h2>System Check</h2>
+          <p class="system-copy">This checks whether the project is healthy. It does not require a real drone.</p>
+          <button class="primary-action compact" id="checkButton">Run System Check</button>
+          <pre class="check-result" id="checkResult">No check run yet.</pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

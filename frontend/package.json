@@ -1,0 +1,13 @@
+{
+  "name": "hunteye-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Human-first HuntEye desktop app",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^42.2.0"
+  }
+}

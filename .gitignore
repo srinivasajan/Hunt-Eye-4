@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.venv/
+venv/
+__pycache__/
+*.zip
+*.mp4
+*.exe
+*.pt
+*.pth
+*.onnx
+*.npy
