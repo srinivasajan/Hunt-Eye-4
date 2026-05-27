@@ -1,7 +1,9 @@
 {
   "ui_state": {
+    "app_state": "LIVE",
     "config_scroll": 0,
     "config_selected_index": 0,
+    "input_source": "DEMO",
     "panel_mode": "OPS",
     "panel_order": [
       "latency",

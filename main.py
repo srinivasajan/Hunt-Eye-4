@@ -2,12 +2,24 @@ import cv2
 import time
 import sys
 import os
+import traceback
 
 # Ensure PyTorch uses local offline cache before loading any Torch libraries
 os.environ["TORCH_HOME"] = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "models", "torch_hub_cache")
 
-# Add src to the Python path to allow imports from the src directory
-sys.path.insert(0, os.path.abspath('src'))
+# sys.path setup for both source and PyInstaller EXE.
+# When frozen with pathex=['src'] in spec, PyInstaller extracts all src/ packages
+# directly into sys._MEIPASS (the _internal/ dir). So 'config', 'core', 'ui' etc.
+# are all importable WITHOUT a /src prefix.
+# When running from source, add ./src explicitly.
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    _meipass = sys._MEIPASS
+    if _meipass not in sys.path:
+        sys.path.insert(0, _meipass)
+else:
+    _src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')
+    if _src_dir not in sys.path:
+        sys.path.insert(0, _src_dir)
 
 from config import WINDOW_NAME, load_config
 from core.hal import HAL
@@ -301,6 +313,8 @@ def main():
 
     last_monitor = time.time()
 
+    Logger.info("LIVE loop entering — post-SPACE transition")
+
     try:
 
         while True:
@@ -320,9 +334,9 @@ def main():
                     snapshot.update(demo_patch)
                     
                     # Also override the shared state's mission started_at so the timer runs in demo mode
-                    if "started_at" not in state._state["mission"] and ui_state.tracking_state != "SEARCHING":
-                         state._state["mission"]["started_at"] = time.time()
-                         state._state["mission"]["status"] = "ACTIVE"
+                    if "started_at" not in state.mission and ui_state.tracking_state != "SEARCHING":
+                         state.mission["started_at"] = time.time()
+                         state.mission["status"] = "ACTIVE"
                     if snapshot.get("target_bbox") is not None:
                          state.system_mode = "TRACKING"
                     else:
@@ -378,8 +392,19 @@ def main():
                     config_editor,
                     waypoint_editor,
                 )
+    except Exception as e:
+        Logger.error(f"Live loop crashed: {e}")
+        tb = traceback.format_exc()
+        Logger.error(tb)
+        # Write crash log so it's visible both in console and in packaged EXE
+        try:
+            with open("crash_log.txt", "a") as f:
+                f.write(f"\n=== LIVE LOOP CRASH ===\n{tb}\n")
+        except Exception:
+            pass
 
     finally:
+        Logger.info("LIVE loop exiting — shutting down workers")
 
         try:
             ui_state.config_selected_index = config_editor.selected_index
@@ -398,8 +423,11 @@ def main():
         cv2.destroyAllWindows()
 
         Logger.info("HuntEye runtime stopped")
-        import sys
-        sys.exit(0)
+        # NOTE: Do NOT call sys.exit() here.
+        # When launched from launcher.py via import main; main.main(),
+        # sys.exit() would immediately kill the launcher process and destroy
+        # the OS window context, making the EXE appear to close silently.
+        # Allow the call stack to unwind naturally instead.
 
 
 def _handle_keypress(
@@ -571,11 +599,15 @@ def _normalize_bbox(bbox):
 
 
 if __name__ == "__main__":
-    import traceback
     try:
         main()
     except Exception as e:
         Logger.error(f"FATAL CRASH in main: {e}")
-        with open("crash_log.txt", "w") as f:
-            f.write(traceback.format_exc())
-            print(f"CRASH: {e}\nCheck crash_log.txt")
+        tb = traceback.format_exc()
+        try:
+            with open("crash_log.txt", "w") as f:
+                f.write(tb)
+        except Exception:
+            pass
+        print(f"\nCRASH: {e}\nFull traceback written to crash_log.txt")
+        print(tb)

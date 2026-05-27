@@ -1,16 +1,10 @@
 Traceback (most recent call last):
-  File "C:\hunteye srinivas +yuvraj+ketan\main.py", line 566, in <module>
+  File "C:\hunteye srinivas +yuvraj+ketan\main.py", line 576, in <module>
     main()
     ~~~~^^
-  File "C:\hunteye srinivas +yuvraj+ketan\main.py", line 341, in main
-    display_frame = dashboard.render(
-        frame,
-    ...<4 lines>...
-        config_for_editor=config,
-    )
-  File "C:\hunteye srinivas +yuvraj+ketan\src\ui\dashboard.py", line 74, in render
-    panel = self._build_panel(frame_view.shape[0], snapshot, worker_statuses, fps, ui_state)
-  File "C:\hunteye srinivas +yuvraj+ketan\src\ui\dashboard.py", line 342, in _build_panel
-    self._section(panel, "Latency (avg ms)", y, color=colors["muted"])
-    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: OperationsDashboard._section() got an unexpected keyword argument 'color'
+  File "C:\hunteye srinivas +yuvraj+ketan\main.py", line 102, in main
+    orchestrator.add_worker(build_perception_worker(), factory=build_perception_worker)
+                            ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\hunteye srinivas +yuvraj+ketan\main.py", line 101, in build_perception_worker
+    return PerceptionWorker(state=state, config=config)
+TypeError: PerceptionWorker.__init__() got an unexpected keyword argument 'state'
